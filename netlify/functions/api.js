@@ -36,6 +36,8 @@ let _auth = null;
 let cache = null;
 
 function sheetsAuth() {
+  const missing = ["HUB_SHEET_ID", "GOOGLE_SERVICE_ACCOUNT_EMAIL", "GOOGLE_PRIVATE_KEY"].filter(k => !env(k));
+  if (missing.length) throw new UserError("Netlify is missing these settings: " + missing.join(", ") + ". Add them, then redeploy.", 503);
   if (!_auth) {
     _auth = new JWT({
       email: env("GOOGLE_SERVICE_ACCOUNT_EMAIL"),
@@ -48,10 +50,30 @@ function sheetsAuth() {
 
 const sheetUrl = () => `https://sheets.googleapis.com/v4/spreadsheets/${env("HUB_SHEET_ID")}`;
 
+function explainSheetsError(err) {
+  const msg = String((err && err.message) || err);
+  const detail = JSON.stringify((err && err.response && err.response.data) || "");
+  console.error("Sheets error:", msg, detail.slice(0, 400));
+  if (err instanceof UserError) return err;
+  if (/DECODER|PEM|private key|invalid_grant|JWT/i.test(msg + detail))
+    return new UserError("The Google key in Netlify is not valid. Paste GOOGLE_PRIVATE_KEY again, exactly as it is in the JSON file, then redeploy.", 503);
+  if (/has not been used|is disabled|SERVICE_DISABLED/i.test(msg + detail))
+    return new UserError("The Google Sheets API is switched off. Enable it in Google Cloud, then try again.", 503);
+  if (/PERMISSION_DENIED|403/.test(msg + detail))
+    return new UserError("The hub sheet is not shared with the service account. Share it with GOOGLE_SERVICE_ACCOUNT_EMAIL as Editor.", 503);
+  if (/NOT_FOUND|404|Requested entity/.test(msg + detail))
+    return new UserError("Google cannot find the hub sheet or one of its tabs. Check HUB_SHEET_ID and the tab names.", 503);
+  return new UserError("The site could not read the hub sheet. Check the Netlify function logs.", 503);
+}
+
 async function sheetsGet(ranges) {
   const q = ranges.map(r => "ranges=" + encodeURIComponent(r)).join("&");
-  const res = await sheetsAuth().request({ url: `${sheetUrl()}/values:batchGet?${q}&majorDimension=ROWS` });
-  return res.data.valueRanges.map(v => v.values || []);
+  try {
+    const res = await sheetsAuth().request({ url: `${sheetUrl()}/values:batchGet?${q}&majorDimension=ROWS` });
+    return res.data.valueRanges.map(v => v.values || []);
+  } catch (err) {
+    throw explainSheetsError(err);
+  }
 }
 
 async function sheetsUpdate(range, values, input = "USER_ENTERED") {
@@ -241,8 +263,8 @@ function emailShell(info, inner) {
 // Public endpoints
 // ------------------------------------------------------------
 async function getConfig() {
-  const d = await load();
-  const i = siteInfo(d);
+  let i = { hubName: "StableFlow Hub", company: "", accent: "#2F6FDB", support: env("SUPPORT_EMAIL") };
+  try { i = siteInfo(await load()); } catch (e) { console.error("config: sheet not readable yet"); }
   return { hubName: i.hubName, company: i.company, accent: i.accent, support: i.support, googleClientId: env("GOOGLE_CLIENT_ID") };
 }
 
@@ -451,8 +473,9 @@ export default async (req) => {
     if (!PRIVATE[name]) return json({ error: "Not found" }, 404);
 
     const email = await sessionEmail(req);
+    if (!email) return json({ error: "signed_out" }, 401);
     const d = await load();
-    const emp = email && d.employees.find(e => e.email === email);
+    const emp = d.employees.find(e => e.email === email);
     if (!emp || emp.status !== "Active") return json({ error: "signed_out" }, 401);
 
     const out = await PRIVATE[name](emp, args, d);
