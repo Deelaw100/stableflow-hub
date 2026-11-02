@@ -107,7 +107,7 @@ const c = (r, i) => (r && r[i - 1] != null ? String(r[i - 1]).trim() : "");
 async function load() {
   if (cache && Date.now() - cache.t < 30000) return cache.d;
   const [emp, tools, dept, person, reqs, set] = await sheetsGet([
-    "Employees!A2:O1000", "Tools!A2:J300", "'Department Access'!A1:AZ300",
+    "Employees!A2:P1000", "Tools!A2:J300", "'Department Access'!A1:AZ300",
     "'Person Access'!A2:C500", "Requests!A2:L2000", "Settings!A2:B50",
   ]);
 
@@ -119,7 +119,7 @@ async function load() {
     try { prefs = JSON.parse(c(r, 12) || "{}"); } catch (e) { prefs = {}; }
     return {
       row: i + 2, name: c(r, 1), email: c(r, 2).toLowerCase(), dept: c(r, 3), title: c(r, 4),
-      lead: c(r, 5), role: c(r, 6) || "Employee", status: c(r, 7), start: c(r, 8), seen: c(r, 13), prefs,
+      lead: c(r, 5), role: c(r, 6) || "Employee", status: c(r, 7), start: c(r, 8), seen: c(r, 13), phone: c(r, 16), prefs,
     };
   }).filter(e => e.email);
 
@@ -352,7 +352,7 @@ function adminData(d) {
   const counts = { Active: 0, "On leave": 0, Inactive: 0, Pending: 0 };
   const people = d.employees.map(e => {
     if (counts[e.status] !== undefined) counts[e.status] += 1;
-    return { name: e.name, email: e.email, dept: e.dept, status: e.status || "Pending", role: e.role, seen: e.seen };
+    return { name: e.name, email: e.email, dept: e.dept, status: e.status || "Pending", role: e.role, seen: e.seen, phone: e.phone };
   });
   const open = d.requests.filter(r => r.status !== "Resolved").reverse().map(r => ({
     ticket: r.ticket, time: r.time, name: r.name, email: r.email, dept: r.dept, type: r.type,
@@ -369,7 +369,7 @@ async function hubBoot(emp, args, d) {
     ok: true,
     support: info.support,
     me: { name: emp.name, email: emp.email, dept: emp.dept, title: emp.title, lead: emp.lead, role: emp.role,
-          start: emp.start, photo, prefs: emp.prefs },
+          start: emp.start, phone: emp.phone, photo, prefs: emp.prefs },
     tools: effectiveTools(emp, d).map(t => ({
       id: t.id, name: t.name, cat: t.cat, url: t.url, icon: t.icon, desc: t.desc, pin: t.pin, access: accessLabel(t),
     })),
@@ -386,6 +386,15 @@ async function hubSavePrefs(emp, [, prefs]) {
   };
   await sheetsUpdate(`Employees!L${emp.row}`, [[JSON.stringify(clean)]], "RAW");
   return clean;
+}
+
+async function hubSaveProfile(emp, [, phone]) {
+  phone = String(phone || "").trim().replace(/\s+/g, " ");
+  if (phone && !/^\+?[0-9][0-9 ()\-]{5,19}$/.test(phone)) {
+    throw new UserError("Enter a phone number using digits, spaces and + only. Example: +234 800 000 0000");
+  }
+  await sheetsUpdate(`Employees!P${emp.row}`, [[phone]], "RAW");
+  return phone;
 }
 
 async function hubUploadPhoto(emp, [, dataUrl]) {
@@ -451,7 +460,7 @@ async function hubAdminReply(emp, [, ticket, reply, status], d) {
 }
 
 const PUBLIC = { authGoogle, authCodeRequest, authCodeVerify, logout };
-const PRIVATE = { hubBoot, hubSavePrefs, hubUploadPhoto, hubSubmitRequest, hubAdminReply };
+const PRIVATE = { hubBoot, hubSavePrefs, hubSaveProfile, hubUploadPhoto, hubSubmitRequest, hubAdminReply };
 
 // ------------------------------------------------------------
 // Router
