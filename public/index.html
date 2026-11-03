@@ -176,8 +176,22 @@ textarea.in{min-height:130px;resize:vertical}
 .gbtn{min-height:44px}
 .or{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:12px;font-weight:600}
 .or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
+.lmsg.soft{background:var(--soft);color:var(--ink)}
 .lmsg{padding:12px 16px;border-radius:14px;font-size:13.5px;line-height:1.6;background:color-mix(in srgb,#D92D20 12%,var(--card));color:color-mix(in srgb,#D92D20 78%,var(--ink))}
 .in.code{letter-spacing:.45em;font-size:22px;font-weight:700;text-align:center}
+
+/* mobile menu pieces, hidden on desktop */
+.menubtn,.brand-av,.scrim,.drawerfoot{display:none}
+.dbtn{display:flex;align-items:center;gap:14px;width:100%;min-height:44px;padding:10px 14px;border:0;border-radius:14px;background:transparent;color:rgba(255,255,255,.88);font-weight:600;font-size:13.5px;text-align:left}
+.dbtn:hover{background:rgba(255,255,255,.12)}
+/* sign-in: one centered column, every control the same width */
+.lform{align-items:center}
+.lform>*{width:100%;max-width:380px}
+.lform h1,.lform .sub{text-align:center}
+.lform .sub{margin-left:auto;margin-right:auto}
+.gbtn{display:flex;justify-content:center}
+.lbody .btn{width:100%;justify-content:center}
+.lbody .btn.sm{width:auto;align-self:center}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation-duration:.01ms!important}}
 
 @media (max-width:1000px){
@@ -185,58 +199,56 @@ textarea.in{min-height:130px;resize:vertical}
   .cols{grid-template-columns:1fr}
   .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
-@media (max-width:860px){
-  .card{grid-template-columns:1fr;border-radius:30px}
-  .brand{padding:22px 24px 14px}
-  .sidepanel{border-top-right-radius:0;padding:14px 14px 16px;gap:12px}
-  .nav{flex-direction:row;overflow-x:auto;padding-bottom:4px}
-  .nav button{width:auto;white-space:nowrap;padding:10px 14px}
-  .team{display:none}
-  .ask{display:none}
-  .top{padding:18px 20px 6px}
-  main{padding:10px 20px 30px}
-  .wn{display:none}
-  h1{font-size:27px}
-  .th{display:none}
-  .row{grid-template-columns:minmax(0,1fr) 44px}
-  .row .c2,.row .c3{display:none}
-}
 .phonerow{display:flex;gap:10px;flex-wrap:wrap}
 .phonerow .in{flex:1;min-width:190px}
 .kv div,.kv b{overflow-wrap:anywhere}
 .head{flex-wrap:wrap}
+
 @media (max-width:860px){
   html{-webkit-text-size-adjust:100%}
-  .shell{padding:8px;align-items:flex-start}
-  .card{min-height:calc(100vh - 16px);border-radius:26px}
-  .top{flex-wrap:wrap;gap:8px}
-  .search{order:3;flex:1 1 100%;max-width:none}
-  .sp{display:none}
-  .top .who{margin-left:auto}
-  .iconbtn{width:44px;height:44px}
-  .nav button{min-height:44px}
-  .seg button{min-height:40px;padding:8px 14px}
+  .shell{padding:12px}
+  .shell.appshell{padding:0;display:block}
+  .card.app{display:block;border-radius:0;box-shadow:none;min-height:100vh;overflow:visible;padding-top:calc(60px + env(safe-area-inset-top,0px))}
+  /* top header with the menu button */
+  .app .brand{position:fixed;top:0;left:0;right:0;z-index:30;height:calc(60px + env(safe-area-inset-top,0px));padding:env(safe-area-inset-top,0px) 12px 0;gap:10px;background:var(--card);border-bottom:1px solid var(--line);font-size:18px;align-items:center}
+  .menubtn{display:grid;place-items:center;width:44px;height:44px;border:0;border-radius:14px;background:var(--soft);color:var(--ink);flex:none}
+  .brand-av{display:block;margin-left:auto;border:0;background:none;padding:0;border-radius:50%}
+  /* sidebar becomes a slide-in menu */
+  .app .sidepanel{position:fixed;top:0;left:0;bottom:0;width:min(84vw,320px);z-index:40;border-radius:0 30px 30px 0;padding:calc(22px + env(safe-area-inset-top,0px)) 16px calc(20px + env(safe-area-inset-bottom,0px));gap:16px;overflow-y:auto;transform:translateX(-105%);visibility:hidden;transition:transform .25s ease,visibility .25s}
+  body.menu-open .app .sidepanel{transform:none;visibility:visible;box-shadow:0 0 60px rgba(0,0,0,.45)}
+  .scrim{display:block;position:fixed;inset:0;z-index:35;background:rgba(5,10,25,.55);opacity:0;pointer-events:none;transition:opacity .25s}
+  body.menu-open .scrim{opacity:1;pointer-events:auto}
+  body.menu-open{overflow:hidden}
+  .nav button{min-height:46px}
+  .drawerfoot{display:flex;flex-direction:column;gap:2px;padding-top:10px;border-top:1px solid rgba(255,255,255,.2)}
+  /* page */
+  .top{padding:14px 16px 4px}
+  .top .iconbtn,.top .who,.top .preview,.top .sp{display:none}
+  .search{max-width:none;flex:1 1 100%}
+  main{padding:8px 16px calc(28px + env(safe-area-inset-bottom,0px))}
+  h1{font-size:26px}
+  .head{flex-wrap:wrap}
+  .th{display:none}
+  .row{grid-template-columns:minmax(0,1fr) 44px}
+  .row .c2,.row .c3{display:none}
+  .quick{gap:14px}
+  .qcard{min-height:140px;padding:16px}
   .search input,.in,textarea.in,select.in{font-size:16px}
   .btn{min-height:44px}
   .btn.sm{min-height:40px}
+  .seg button{min-height:40px;padding:8px 14px}
   .pills label{padding:11px 16px}
-  .quick{gap:14px}
-  .qcard{min-height:140px;padding:16px}
   .kv{grid-template-columns:100px 1fr}
   .panel{padding:18px;border-radius:22px}
-  main{padding-bottom:calc(30px + env(safe-area-inset-bottom,0px))}
   .toast{bottom:calc(20px + env(safe-area-inset-bottom,0px))}
-  .login{grid-template-columns:1fr}
+  /* sign-in */
+  .login{grid-template-columns:1fr;border-radius:28px}
   .lside{border-radius:0 0 44px 0;padding:26px 24px;gap:18px}
   .lside h2{font-size:24px}
-  .lform{padding:30px 24px 36px}
+  .lform{padding:30px 22px 36px}
 }
-@media (max-width:420px){
+@media (max-width:340px){
   .quick{grid-template-columns:1fr}
-  .stats{grid-template-columns:1fr 1fr;gap:10px}
-  h1{font-size:24px}
-  .brand{font-size:19px;padding:20px 20px 12px}
-  .locked{padding:32px 22px}
 }
 </style>
 <script src="https://accounts.google.com/gsi/client" async defer onload="window.initGoogleBtn && window.initGoogleBtn()"></script>
@@ -273,6 +285,7 @@ const ICONS = {
   refresh:'<path d="M21 12a9 9 0 10-3 6.7"/><path d="M21 4v6h-6"/>',
   inbox:'<path d="M3 13l3-8h12l3 8v6H3z"/><path d="M3 13h5l1 3h6l1-3h5"/>',
   check:'<path d="M5 12l5 5L20 7"/>',
+  menu:'<path d="M4 7h16M4 12h16M4 17h16"/>',
   ext:'<path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v5a1 1 0 01-1 1H5a1 1 0 01-1-1V7a1 1 0 011-1h5"/>',
   logout:'<path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>'
 };
@@ -310,7 +323,10 @@ async function api(fn, ...args) {
   });
   let data = null;
   try { data = await res.json(); } catch (e) {}
-  if (res.status === 401) { const e = new Error('Your session ended. Sign in again.'); e.code = 'signed_out'; throw e; }
+  if (res.status === 401) {
+    if (S.data) { S.data = null; renderLogin('Your session ended. Sign in again.', true); }
+    const e = new Error('Your session ended. Sign in again.'); e.code = 'signed_out'; throw e;
+  }
   if (!res.ok) { const e = new Error((data && data.error) || 'Something went wrong. Try again.'); e.code = data && data.code; throw e; }
   return data;
 }
@@ -336,13 +352,20 @@ function navHtml() {
 }
 
 function themeBtnHtml() { return ico(S.theme === 'dark' ? 'sun' : 'moon'); }
+function syncTheme() {
+  const b = $('#themeBtn'); if (b) b.innerHTML = themeBtnHtml();
+  const d = $('#drawerTheme'); if (d) d.innerHTML = themeBtnHtml() + '<span>' + (S.theme === 'dark' ? 'Light mode' : 'Dark mode') + '</span>';
+}
+function refreshAvatars() {
+  ['#topAv', '#mobAv'].forEach(id => { const el = $(id); if (el) el.innerHTML = avatar(S.data.me); });
+}
 
 function renderShell() {
   const me = S.data.me;
   $('#app').innerHTML = `
-  <div class="shell"><div class="card">
+  <div class="shell appshell"><div class="card app">
     <aside class="side">
-      <div class="brand"><span class="logo">${esc(BOOT.hubName.charAt(0))}</span><span>${esc(BOOT.hubName)}</span></div>
+      <div class="brand"><button class="menubtn" data-act="menu" aria-label="Open menu">${ico('menu', 22)}</button><span class="logo">${esc(BOOT.hubName.charAt(0))}</span><span>${esc(BOOT.hubName)}</span><button class="brand-av" id="mobAv" data-view="profile" aria-label="My profile">${avatar(me)}</button></div>
       <div class="sidepanel">
         <button class="ask" data-act="ask">Ask for help</button>
         <nav class="nav" id="nav">${navHtml()}</nav>
@@ -352,8 +375,14 @@ function renderShell() {
           ${me.lead ? `<small>Reports to</small><b style="margin-bottom:0">${esc(me.lead)}</b>` : ''}
           <a data-act="ask" role="button" tabindex="0" style="cursor:pointer">Missing a tool? Request access ${ico('arrow', 14)}</a>
         </div>
+        <div class="drawerfoot">
+          <button class="dbtn" id="drawerTheme" data-act="toggleTheme">${themeBtnHtml()}<span>${S.theme === 'dark' ? 'Light mode' : 'Dark mode'}</span></button>
+          <button class="dbtn" data-act="help">${ico('help')}<span>Help</span></button>
+          <button class="dbtn" data-act="logout">${ico('logout')}<span>Sign out</span></button>
+        </div>
       </div>
     </aside>
+    <div class="scrim" data-act="closeMenu"></div>
     <section class="content">
       <header class="top">
         <div class="search">${ico('search', 18)}<input id="q" type="search" placeholder="Search your tools" autocomplete="off" aria-label="Search your tools"></div>
@@ -375,6 +404,7 @@ function renderShell() {
 }
 
 function go(view) {
+  document.body.classList.remove('menu-open');
   S.view = view;
   S.q = '';
   const q = $('#q'); if (q) q.value = '';
@@ -573,12 +603,14 @@ function resizeImage(file) {
 
 /* ---------- actions ---------- */
 const ACT = {
+  menu() { document.body.classList.toggle('menu-open'); },
+  closeMenu() { document.body.classList.remove('menu-open'); },
   logout() { api('logout').catch(() => {}).then(() => { S.data = null; renderLogin(); }); },
   ask()   { S.draftType = 'Access request'; go('help'); },
   help()  { S.draftType = 'Question'; go('help'); },
   layout(a) { S.layout = a.dataset.v; renderMain(); },
-  toggleTheme() { setTheme(S.theme === 'dark' ? 'light' : 'dark'); $('#themeBtn').innerHTML = themeBtnHtml(); if (S.view === 'profile') renderMain(); savePrefs(); },
-  theme(a) { setTheme(a.dataset.v); $('#themeBtn').innerHTML = themeBtnHtml(); renderMain(); savePrefs(); },
+  toggleTheme() { setTheme(S.theme === 'dark' ? 'light' : 'dark'); syncTheme(); if (S.view === 'profile') renderMain(); savePrefs(); },
+  theme(a) { setTheme(a.dataset.v); syncTheme(); renderMain(); savePrefs(); },
   accent(a) { setAccent(a.dataset.v); renderMain(); savePrefs(); },
   photo() { $('#file').click(); },
   savePhone(btn) {
@@ -622,6 +654,7 @@ document.addEventListener('click', e => {
   if (a && ACT[a.dataset.act]) ACT[a.dataset.act](a);
 });
 document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.body.classList.remove('menu-open');
   if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('a[data-act]')) { e.preventDefault(); ACT[e.target.dataset.act](e.target); }
 });
 document.addEventListener('change', e => {
@@ -630,7 +663,7 @@ document.addEventListener('change', e => {
   toast('Uploading your photo');
   resizeImage(file).then(url => api('hubUploadPhoto', BOOT.token, url)).then(url => {
     S.data.me.photo = url;
-    $('#topAv').innerHTML = avatar(S.data.me);
+    refreshAvatars();
     renderMain();
     toast('Photo updated.');
   }).catch(err => toast(err.message, true));
@@ -653,6 +686,7 @@ async function start() {
 function bootApp() {
   api('hubBoot', BOOT.token).then(d => {
     S.data = d; S.view = 'home';
+    S.idle = d.idle || 5; lastActive = Date.now(); lastPing = Date.now();
     const p = d.me.prefs || {};
     setTheme(p.theme || systemTheme());
     setAccent(p.accent || BOOT.accent || '#2F6FDB');
@@ -663,18 +697,42 @@ function bootApp() {
   });
 }
 
-const LG = { step: 'start', email: '' };
+/* ---------- sign out after inactivity ---------- */
+let lastActive = Date.now(), lastPing = Date.now();
+['mousemove', 'keydown', 'click', 'scroll', 'touchstart'].forEach(ev =>
+  window.addEventListener(ev, () => { lastActive = Date.now(); }, { passive: true }));
 
-function loginMsg(text) {
+function signOutIdle() {
+  const m = S.idle || 5;
+  S.data = null;
+  api('logout').catch(() => {}).then(() =>
+    renderLogin('You were signed out after ' + m + ' minute' + (m === 1 ? '' : 's') + ' of inactivity. Sign in to continue.', true));
+}
+
+function idleCheck() {
+  if (IS_DEMO || !S.data || !S.data.ok) return;
+  const now = Date.now();
+  if (now - lastActive >= (S.idle || 5) * 60000) { signOutIdle(); return; }
+  if (lastActive > lastPing && now - lastPing >= 30000) { lastPing = now; api('hubPing', BOOT.token).catch(() => {}); }
+}
+setInterval(idleCheck, 15000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) idleCheck(); });
+
+const _pe = (new URLSearchParams(location.search).get('e') || '').trim().toLowerCase();
+const LG = { step: 'start', email: /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(_pe) ? _pe : '' };
+
+function loginMsg(text, soft) {
   const m = $('#lmsg'); if (!m) return;
   m.textContent = text || '';
+  m.className = 'lmsg' + (soft ? ' soft' : '');
   m.hidden = !text;
 }
 function loginBusy(on, label) {
   ['#lsend', '#lverify'].forEach(id => { const b = $(id); if (b) { b.disabled = on; if (on && label) b.textContent = label; } });
 }
 
-function renderLogin(note) {
+function renderLogin(note, soft) {
+  document.body.classList.remove('menu-open');
   setTheme(systemTheme());
   setAccent(BOOT.accent || '#2F6FDB');
   LG.step = 'start';
@@ -690,7 +748,7 @@ function renderLogin(note) {
       <div id="lbody" class="lbody"></div>
     </section></div></div>`;
   loginBody();
-  if (note) loginMsg(note);
+  if (note) loginMsg(note, soft);
 }
 
 function loginBody() {
@@ -721,7 +779,7 @@ function initGoogle() {
     client_id: BOOT.googleClientId,
     callback: r => { loginMsg(''); api('authGoogle', r.credential).then(bootApp).catch(e => loginMsg(e.message)); }
   });
-  google.accounts.id.renderButton(host, { theme: 'outline', size: 'large', shape: 'pill', text: 'continue_with', width: Math.max(200, Math.min(300, (host.parentElement.clientWidth || 300))) });
+  google.accounts.id.renderButton(host, { theme: 'outline', size: 'large', shape: 'pill', text: 'continue_with', width: Math.max(200, Math.min(380, host.clientWidth || 300)) });
 }
 window.initGoogleBtn = initGoogle;
 
@@ -779,6 +837,7 @@ const DEMO_DATA = {
 };
 const DEMO = {
   hubBoot: () => DEMO_DATA,
+  hubPing: () => ({ ok: true }),
   hubSavePrefs: () => ({}),
   hubSaveProfile: (t, p) => p,
   hubUploadPhoto: (t, url) => url,

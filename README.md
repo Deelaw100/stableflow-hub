@@ -41,3 +41,5 @@ Add `?demo` to the address to see the dashboard with sample data.
 - Changing a status in the sheet takes effect within about 30 seconds, even for someone already signed in.
 - Drive sharing, welcome emails and status processing still run from Code.gs.
 - Resend welcome and Sync now are menu items in the sheet (Employee Hub menu).
+
+- People are signed out after 5 minutes without activity, and when the browser closes. Change the number with IDLE_MINUTES on the Settings tab (1 to 240). Nobody stays signed in past 12 hours.

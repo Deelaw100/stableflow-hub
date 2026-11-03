@@ -201,16 +201,31 @@ const secret = () => {
   return new TextEncoder().encode(env("SESSION_SECRET"));
 };
 
-async function makeCookie(email) {
-  const jwt = await new SignJWT({ email }).setProtectedHeader({ alg: "HS256" })
-    .setIssuedAt().setExpirationTime("7d").sign(secret());
-  return `${COOKIE}=${jwt}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${7 * 86400}`;
+// The cookie has no Max-Age, so the browser drops it when it closes.
+// The token inside also expires after IDLE_MINUTES of no activity, and each
+// request pushes that forward. Nobody stays signed in past 12 hours.
+const MAX_SESSION_HOURS = 12;
+
+function idleMinutes(d) {
+  const n = parseInt((d && d.settings && d.settings.IDLE_MINUTES) || "5", 10);
+  return Math.min(240, Math.max(1, isNaN(n) ? 5 : n));
 }
 
-async function sessionEmail(req) {
+async function makeCookie(email, idle, t0) {
+  const now = Math.floor(Date.now() / 1000);
+  const jwt = await new SignJWT({ email, t0: t0 || now }).setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt().setExpirationTime(now + idle * 60).sign(secret());
+  return `${COOKIE}=${jwt}; Path=/; HttpOnly; Secure; SameSite=Lax`;
+}
+
+async function readSession(req) {
   const m = new RegExp("(?:^|;\\s*)" + COOKIE + "=([^;]+)").exec(req.headers.get("cookie") || "");
   if (!m) return null;
-  try { return (await jwtVerify(m[1], secret())).payload.email; } catch (e) { return null; }
+  try {
+    const p = (await jwtVerify(m[1], secret())).payload;
+    if (!p.email || Math.floor(Date.now() / 1000) - (p.t0 || 0) > MAX_SESSION_HOURS * 3600) return null;
+    return { email: p.email, t0: p.t0 };
+  } catch (e) { return null; }
 }
 
 function lookup(d, email) {
@@ -225,8 +240,8 @@ function lookup(d, email) {
   return emp;
 }
 
-async function signIn(emp) {
-  const cookie = await makeCookie(emp.email);
+async function signIn(emp, d) {
+  const cookie = await makeCookie(emp.email, idleMinutes(d));
   await sheetsUpdate(`Employees!M${emp.row}`, [[nowLagos()]]).catch(() => {});
   return json({ ok: true }, 200, { "set-cookie": cookie });
 }
@@ -279,7 +294,8 @@ async function authGoogle([credential]) {
     throw new UserError("Google could not confirm that sign-in. Try again.", 401);
   }
   if (!p.email || !p.email_verified) throw new UserError("That Google account has no verified email.", 401);
-  return signIn(lookup(await load(), p.email.toLowerCase()));
+  const d = await load();
+  return signIn(lookup(d, p.email.toLowerCase()), d);
 }
 
 async function authCodeRequest([email]) {
@@ -288,7 +304,7 @@ async function authCodeRequest([email]) {
   const d = await load();
   lookup(d, email);
 
-  const store = getStore("login-codes");
+  const store = getStore({ name: "login-codes", consistency: "strong" });
   const key = sha(email);
   const old = await store.get(key, { type: "json" });
   if (old && Date.now() - old.sent < 45000) throw new UserError("Wait a minute before asking for another code.", 429);
@@ -314,11 +330,12 @@ async function authCodeRequest([email]) {
 async function authCodeVerify([email, code]) {
   email = String(email || "").trim().toLowerCase();
   code = String(code || "").replace(/\D/g, "");
-  const store = getStore("login-codes");
+  const store = getStore({ name: "login-codes", consistency: "strong" });
   const key = sha(email);
   const rec = await store.get(key, { type: "json" });
 
-  if (!rec || rec.exp < Date.now()) throw new UserError("That code has expired. Ask for a new one.", 400, "expired");
+  if (!rec) throw new UserError("We could not find a code for that email. Ask for a new one.", 400, "no_code");
+  if (rec.exp < Date.now()) throw new UserError("That code has expired. Ask for a new one.", 400, "expired");
   if (rec.tries >= 5) {
     await store.delete(key);
     throw new UserError("Too many wrong tries. Ask for a new code.", 429, "locked");
@@ -331,7 +348,8 @@ async function authCodeVerify([email, code]) {
     throw new UserError("That code is not right. Check it and try again.", 400, "bad_code");
   }
   await store.delete(key);
-  return signIn(lookup(await load(), email));
+  const d = await load();
+  return signIn(lookup(d, email), d);
 }
 
 async function logout() {
@@ -364,9 +382,10 @@ function adminData(d) {
 async function hubBoot(emp, args, d) {
   const info = siteInfo(d);
   let photo = "";
-  try { photo = (await getStore("hub-photos").get(sha(emp.email))) || ""; } catch (e) { photo = ""; }
+  try { photo = (await getStore({ name: "hub-photos", consistency: "strong" }).get(sha(emp.email))) || ""; } catch (e) { photo = ""; }
   const out = {
     ok: true,
+    idle: idleMinutes(d),
     support: info.support,
     me: { name: emp.name, email: emp.email, dept: emp.dept, title: emp.title, lead: emp.lead, role: emp.role,
           start: emp.start, phone: emp.phone, photo, prefs: emp.prefs },
@@ -377,6 +396,10 @@ async function hubBoot(emp, args, d) {
   };
   if (emp.role === "Admin") out.admin = adminData(d);
   return out;
+}
+
+async function hubPing(emp, args, d) {
+  return { ok: true, idle: idleMinutes(d) };
 }
 
 async function hubSavePrefs(emp, [, prefs]) {
@@ -401,7 +424,7 @@ async function hubUploadPhoto(emp, [, dataUrl]) {
   const m = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(String(dataUrl || ""));
   if (!m) throw new UserError("Choose a JPG, PNG or WebP image.");
   if (Math.floor(m[2].length * 3 / 4) > 700000) throw new UserError("That image is too large. Try a smaller one.");
-  await getStore("hub-photos").set(sha(emp.email), dataUrl);
+  await getStore({ name: "hub-photos", consistency: "strong" }).set(sha(emp.email), dataUrl);
   return dataUrl;
 }
 
@@ -460,7 +483,7 @@ async function hubAdminReply(emp, [, ticket, reply, status], d) {
 }
 
 const PUBLIC = { authGoogle, authCodeRequest, authCodeVerify, logout };
-const PRIVATE = { hubBoot, hubSavePrefs, hubSaveProfile, hubUploadPhoto, hubSubmitRequest, hubAdminReply };
+const PRIVATE = { hubBoot, hubPing, hubSavePrefs, hubSaveProfile, hubUploadPhoto, hubSubmitRequest, hubAdminReply };
 
 // ------------------------------------------------------------
 // Router
@@ -481,14 +504,16 @@ export default async (req) => {
     }
     if (!PRIVATE[name]) return json({ error: "Not found" }, 404);
 
-    const email = await sessionEmail(req);
-    if (!email) return json({ error: "signed_out" }, 401);
+    const sess = await readSession(req);
+    if (!sess) return json({ error: "signed_out" }, 401);
     const d = await load();
-    const emp = d.employees.find(e => e.email === email);
+    const emp = d.employees.find(e => e.email === sess.email);
     if (!emp || emp.status !== "Active") return json({ error: "signed_out" }, 401);
 
     const out = await PRIVATE[name](emp, args, d);
-    return out instanceof Response ? out : json(out);
+    const res = out instanceof Response ? out : json(out);
+    res.headers.append("set-cookie", await makeCookie(emp.email, idleMinutes(d), sess.t0));
+    return res;
   } catch (err) {
     if (err instanceof UserError) return json({ error: err.message, code: err.code }, err.status);
     console.error(err);
